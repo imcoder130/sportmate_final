@@ -1,20 +1,92 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { User } from '../../types';
-import { Building2, Calendar, DollarSign, Plus, TrendingUp, Users } from 'lucide-react';
+import { Building2, Calendar, DollarSign, Plus, TrendingUp, Users, Clock } from 'lucide-react';
+
+interface CachedBooking {
+  booking_id: string;
+  user_id: string;
+  user_name?: string;
+  group_id: string;
+  date: string;
+  time_slot: string;
+  status: string;
+  created_at: string;
+  turf_id?: string;
+}
 
 export default function TurfOwnerDashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
+  const [totalBookings, setTotalBookings] = useState(0);
+  const [totalHours, setTotalHours] = useState(0);
+  const [recentBookings, setRecentBookings] = useState<CachedBooking[]>([]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
+      loadBookingsFromCache();
     } else {
       navigate('/login');
     }
   }, [navigate]);
+
+  const calculateDuration = (timeSlot: string): number => {
+    const [start, end] = timeSlot.split('-');
+    const [startHour, startMin] = start.split(':').map(Number);
+    const [endHour, endMin] = end.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    return (endMinutes - startMinutes) / 60;
+  };
+
+  const loadBookingsFromCache = () => {
+    try {
+      // Get all turf IDs from cache
+      const allKeys = Object.keys(localStorage);
+      const bookingKeys = allKeys.filter(key => key.startsWith('all_bookings_'));
+      
+      let allBookings: CachedBooking[] = [];
+      let totalDuration = 0;
+      
+      bookingKeys.forEach(key => {
+        const turfId = key.replace('all_bookings_', '');
+        const bookingsData = localStorage.getItem(key);
+        if (bookingsData) {
+          const bookings = JSON.parse(bookingsData);
+          // Add turf_id to each booking
+          const bookingsWithTurf = bookings.map((b: CachedBooking) => ({
+            ...b,
+            turf_id: turfId
+          }));
+          allBookings = [...allBookings, ...bookingsWithTurf];
+          
+          // Calculate total hours
+          bookings.forEach((booking: CachedBooking) => {
+            totalDuration += calculateDuration(booking.time_slot);
+          });
+        }
+      });
+      
+      // Filter for upcoming bookings
+      const upcomingBookings = allBookings.filter(booking => {
+        const bookingDate = new Date(booking.date);
+        return bookingDate >= new Date();
+      });
+      
+      // Sort by date (most recent first)
+      upcomingBookings.sort((a, b) => 
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      
+      setTotalBookings(upcomingBookings.length);
+      setTotalHours(totalDuration);
+      setRecentBookings(upcomingBookings.slice(0, 5));
+    } catch (error) {
+      console.error('Error loading bookings from cache:', error);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -89,21 +161,21 @@ export default function TurfOwnerDashboard() {
                 <Calendar className="w-5 h-5 text-white" strokeWidth={2.5} />
               </div>
               <h3 className="text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Bookings</h3>
-              <p className="text-3xl font-black bg-gradient-to-br from-[#FF9F1C] to-[#E68A00] bg-clip-text text-transparent">0</p>
-              <p className="text-xs text-gray-500 mt-1 font-bold">Active</p>
+              <p className="text-3xl font-black bg-gradient-to-br from-[#FF9F1C] to-[#E68A00] bg-clip-text text-transparent">{totalBookings}</p>
+              <p className="text-xs text-gray-500 mt-1 font-bold">Confirmed</p>
             </div>
           </div>
 
-          {/* Earnings */}
+          {/* Total Hours */}
           <div className="bg-white/90 backdrop-blur-sm rounded-xl p-5 border-2 border-gray-100 hover:scale-105 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group" style={{ boxShadow: '0 10px 30px rgba(74, 20, 140, 0.12), 0 4px 12px rgba(74, 20, 140, 0.08)' }}>
             <div className="absolute inset-0 bg-gradient-to-br from-[#4A148C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative">
               <div className="w-11 h-11 bg-gradient-to-br from-[#4A148C] to-[#6A1B9A] rounded-lg flex items-center justify-center mb-3" style={{ boxShadow: '0 6px 16px rgba(74, 20, 140, 0.3)' }}>
-                <DollarSign className="w-5 h-5 text-white" strokeWidth={2.5} />
+                <Clock className="w-5 h-5 text-white" strokeWidth={2.5} />
               </div>
-              <h3 className="text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Earnings</h3>
-              <p className="text-3xl font-black bg-gradient-to-br from-[#4A148C] to-[#6A1B9A] bg-clip-text text-transparent">$0</p>
-              <p className="text-xs text-gray-500 mt-1 font-bold">This month</p>
+              <h3 className="text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Total Hours</h3>
+              <p className="text-3xl font-black bg-gradient-to-br from-[#4A148C] to-[#6A1B9A] bg-clip-text text-transparent">{totalHours.toFixed(1)}h</p>
+              <p className="text-xs text-gray-500 mt-1 font-bold">Booked</p>
             </div>
           </div>
 
@@ -124,28 +196,66 @@ export default function TurfOwnerDashboard() {
           </button>
         </div>
 
-        {/* Empty State */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-xl p-12 text-center border-2 border-gray-100 relative overflow-hidden" style={{ boxShadow: '0 15px 40px rgba(20, 184, 166, 0.12), 0 8px 20px rgba(20, 184, 166, 0.08)' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-[#14B8A6]/5 to-transparent pointer-events-none"></div>
-          <div className="relative">
-            <div className="w-20 h-20 bg-gradient-to-br from-[#14B8A6] to-[#0D9488] rounded-xl flex items-center justify-center mx-auto mb-6 transform hover:scale-110 hover:rotate-6 transition-all duration-300 cursor-pointer" style={{ boxShadow: '0 15px 40px rgba(20, 184, 166, 0.3), 0 8px 20px rgba(20, 184, 166, 0.2), inset 0 2px 4px rgba(255, 255, 255, 0.2)' }}>
-              <Building2 className="w-10 h-10 text-white" strokeWidth={2.5} />
+        {/* Recent Bookings */}
+        {recentBookings.length > 0 ? (
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border-2 border-gray-100 relative overflow-hidden" style={{ boxShadow: '0 15px 40px rgba(20, 184, 166, 0.12), 0 8px 20px rgba(20, 184, 166, 0.08)' }}>
+            <div className="absolute inset-0 bg-gradient-to-br from-[#14B8A6]/5 to-transparent pointer-events-none"></div>
+            <div className="relative">
+              <h2 className="text-2xl font-black bg-gradient-to-r from-[#14B8A6] to-[#0D9488] bg-clip-text text-transparent mb-6">Recent Bookings</h2>
+              <div className="space-y-4">
+                {recentBookings.map((booking) => {
+                  const duration = calculateDuration(booking.time_slot);
+                  return (
+                    <div 
+                      key={booking.booking_id}
+                      className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-2 border-green-200"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full">
+                              ✓ CONFIRMED
+                            </span>
+                            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
+                              {duration}h duration
+                            </span>
+                          </div>
+                          <p className="text-lg font-bold text-gray-800">📅 {new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+                          <p className="text-gray-700 font-semibold">⏰ {booking.time_slot}</p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Booked on: {new Date(booking.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <h2 className="text-3xl font-black bg-gradient-to-r from-[#14B8A6] via-[#0D9488] to-[#14B8A6] bg-clip-text text-transparent mb-3">Your Turfs</h2>
-            <p className="text-lg text-gray-600 mb-8 font-bold">No turfs registered yet</p>
-            <button
-              onClick={() => navigate('/turf-owner/create-turf')}
-              className="px-8 py-3 rounded-lg font-black text-white text-base hover:scale-105 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group"
-              style={{
-                background: 'linear-gradient(135deg, #4A148C 0%, #6A1B9A 100%)',
-                boxShadow: '0 10px 30px rgba(74, 20, 140, 0.3), 0 5px 15px rgba(74, 20, 140, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-              }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-              <span className="relative">Create Your First Turf</span>
-            </button>
           </div>
-        </div>
+        ) : (
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl p-12 text-center border-2 border-gray-100 relative overflow-hidden" style={{ boxShadow: '0 15px 40px rgba(20, 184, 166, 0.12), 0 8px 20px rgba(20, 184, 166, 0.08)' }}>
+            <div className="absolute inset-0 bg-gradient-to-br from-[#14B8A6]/5 to-transparent pointer-events-none"></div>
+            <div className="relative">
+              <div className="w-20 h-20 bg-gradient-to-br from-[#14B8A6] to-[#0D9488] rounded-xl flex items-center justify-center mx-auto mb-6 transform hover:scale-110 hover:rotate-6 transition-all duration-300 cursor-pointer" style={{ boxShadow: '0 15px 40px rgba(20, 184, 166, 0.3), 0 8px 20px rgba(20, 184, 166, 0.2), inset 0 2px 4px rgba(255, 255, 255, 0.2)' }}>
+                <Building2 className="w-10 h-10 text-white" strokeWidth={2.5} />
+              </div>
+              <h2 className="text-3xl font-black bg-gradient-to-r from-[#14B8A6] via-[#0D9488] to-[#14B8A6] bg-clip-text text-transparent mb-3">No Bookings Yet</h2>
+              <p className="text-lg text-gray-600 mb-8 font-bold">Start by creating your first turf</p>
+              <button
+                onClick={() => navigate('/turf-owner/create-turf')}
+                className="px-8 py-3 rounded-lg font-black text-white text-base hover:scale-105 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group"
+                style={{
+                  background: 'linear-gradient(135deg, #4A148C 0%, #6A1B9A 100%)',
+                  boxShadow: '0 10px 30px rgba(74, 20, 140, 0.3), 0 5px 15px rgba(74, 20, 140, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                <span className="relative">Create Your First Turf</span>
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

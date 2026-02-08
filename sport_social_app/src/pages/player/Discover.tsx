@@ -124,12 +124,13 @@ export default function Discover() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
               <div className="md:col-span-1">
-                <label className="block text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Search Radius</label>
+                <label className="block text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Search Radius (km)</label>
                 <input
                   type="number"
-                  placeholder="km"
+                  min="1"
+                  placeholder="Enter radius in km"
                   value={searchParams.radius}
-                  onChange={(e) => setSearchParams({ ...searchParams, radius: parseInt(e.target.value) || 10 })}
+                  onChange={(e) => setSearchParams({ ...searchParams, radius: parseInt(e.target.value) || 0 })}
                   className="w-full px-4 py-2 rounded-lg border-2 border-gray-200 focus:border-[#4A148C] focus:outline-none font-bold text-gray-900"
                 />
               </div>

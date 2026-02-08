@@ -238,9 +238,9 @@ export const turfAPI = {
 
   bookTurf: async (turfId: string, bookingData: {
     user_id: string;
+    group_id: string;
     date: string;
     time_slot: string;
-    group_id?: string;
   }) => {
     const response = await api.post(`/turfs/${turfId}/book`, bookingData);
     return response.data;
@@ -268,6 +268,18 @@ export const turfAPI = {
 
   checkAvailability: async (turfId: string, date: string) => {
     const response = await api.post(`/turfs/${turfId}/availability`, { date });
+    return response.data;
+  },
+
+  getUserBookings: async (turfId: string, userId: string) => {
+    const response = await api.get(`/turfs/${turfId}/bookings?user_id=${userId}`);
+    return response.data;
+  },
+
+  cancelBooking: async (turfId: string, bookingId: string, userId: string) => {
+    const response = await api.post(`/turfs/${turfId}/bookings/${bookingId}/cancel`, {
+      user_id: userId,
+    });
     return response.data;
   },
 };

@@ -148,11 +148,13 @@ export default function Turfs() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {turfs.map((turf) => (
+            {turfs.map((turf) => {
+              const turfId = turf.turf_id || turf.id;
+              return (
               <div
-                key={turf.turf_id}
+                key={turfId}
                 className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition cursor-pointer"
-                onClick={() => navigate(`/player/turf/${turf.turf_id}`)}
+                onClick={() => navigate(`/player/turf/${turfId}`)}
               >
                 {turf.images && turf.images.length > 0 ? (
                   <img
@@ -168,18 +170,25 @@ export default function Turfs() {
 
                 <div className="p-4">
                   <h3 className="text-xl font-bold text-gray-800 mb-2">{turf.name}</h3>
-                  <p className="text-sm text-blue-600 font-semibold mb-2">
-                    {turf.sport.toUpperCase()}
-                  </p>
+                  {turf.sport && (
+                    <p className="text-sm text-blue-600 font-semibold mb-2">
+                      {turf.sport.toUpperCase()}
+                    </p>
+                  )}
+                  {turf.sports && turf.sports.length > 0 && !turf.sport && (
+                    <p className="text-sm text-blue-600 font-semibold mb-2">
+                      {turf.sports.map(s => s.toUpperCase()).join(', ')}
+                    </p>
+                  )}
                   <p className="text-sm text-gray-600 mb-2">
                     📍 {turf.location?.address || 'Location not specified'}
                   </p>
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-bold text-green-600">
-                      ₹{turf.pricing?.per_hour}/hr
+                      ₹{turf.pricing?.per_hour || 'N/A'}/hr
                     </span>
                     <span className="text-sm text-gray-500">
-                      {turf.timings?.opening} - {turf.timings?.closing}
+                      {turf.timings?.opening || 'N/A'} - {turf.timings?.closing || 'N/A'}
                     </span>
                   </div>
                   {turf.features && turf.features.length > 0 && (
@@ -196,7 +205,8 @@ export default function Turfs() {
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             {turfs.length === 0 && (
               <div className="col-span-full text-center py-12">

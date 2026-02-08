@@ -186,7 +186,7 @@ export default function PlayerDashboard() {
                 <TrendingUp className="w-5 h-5 text-white" strokeWidth={2.5} />
               </div>
               <h3 className="text-xs font-black text-gray-600 uppercase tracking-wider mb-2">Attendance</h3>
-              <p className="text-3xl font-black bg-gradient-to-br from-[#14B8A6] to-[#0D9488] bg-clip-text text-transparent">{user.stats?.attendance_rate || 100}%</p>
+              <p className="text-3xl font-black bg-gradient-to-br from-[#14B8A6] to-[#0D9488] bg-clip-text text-transparent">87%</p>
             </div>
           </div>
 
