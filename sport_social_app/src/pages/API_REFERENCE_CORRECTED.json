@@ -1,0 +1,526 @@
+{
+  "api_info": {
+    "base_url": "https://sport-api-grsqjakhza-uc.a.run.app",
+    "version": "1.0",
+    "description": "Sport Finder API - CORRECTED formats based on actual backend implementation",
+    "last_updated": "2026-02-08"
+  },
+  "important_notes": {
+    "auto_fetched_fields": [
+      "user_name is automatically fetched from user_id in create_post",
+      "sender_name is automatically fetched from user_id in send_message",
+      "DO NOT send these fields in request body"
+    ],
+    "field_naming": {
+      "accept_request": "uses owner_id",
+      "reject_request": "uses owner_id",
+      "kick_player": "uses creator_id (different!)",
+      "ratings": "uses punctuality, skill, teamwork, sportsmanship (not skills with 's')"
+    }
+  },
+  "endpoints": {
+    "authentication": {
+      "register_player": {
+        "method": "POST",
+        "url": "/api/users/register",
+        "required_fields": ["name", "email", "phone", "password"],
+        "body": {
+          "name": "string",
+          "email": "string",
+          "phone": "string",
+          "password": "string (min 6 characters)",
+          "role": "player (required, must be exactly 'player')",
+          "avatar": "string (optional)",
+          "bio": "string (optional)",
+          "skill_level": "beginner|intermediate|advanced (optional, default: beginner)",
+          "preferred_position": "string (optional)",
+          "age": "number (optional)",
+          "gender": "string (optional)"
+        },
+        "response": {
+          "message": "Player registered successfully",
+          "user": {
+            "id": "string",
+            "name": "string",
+            "email": "string",
+            "phone": "string",
+            "role": "player",
+            "profile": {
+              "avatar": "string",
+              "bio": "string",
+              "skill_level": "string",
+              "age": "number"
+            },
+            "stats": {
+              "games_played": 0,
+              "games_organized": 0,
+              "average_rating": 0.0
+            }
+          }
+        }
+      },
+      "register_turf_owner": {
+        "method": "POST",
+        "url": "/api/turf-owners/register",
+        "required_fields": ["name", "email", "phone", "password", "business_name", "business_address"],
+        "body": {
+          "name": "string",
+          "email": "string",
+          "phone": "string",
+          "password": "string (min 6 characters)",
+          "business_name": "string",
+          "business_address": "string",
+          "contact_person": "string (optional, defaults to name)",
+          "gstin": "string (optional)"
+        },
+        "note": "role will be automatically set to 'turf_owner', don't send it",
+        "response": {
+          "message": "Turf owner registered successfully",
+          "user": {
+            "id": "string",
+            "name": "string",
+            "email": "string",
+            "role": "turf_owner",
+            "business": {
+              "business_name": "string",
+              "business_address": "string",
+              "contact_person": "string",
+              "total_turfs": 0
+            }
+          }
+        }
+      },
+      "login": {
+        "method": "POST",
+        "url": "/api/users/login (for players) OR /api/turf-owners/login (for owners)",
+        "required_fields": ["email", "password"],
+        "body": {
+          "email": "string",
+          "password": "string"
+        },
+        "response": {
+          "message": "Login successful",
+          "user": {
+            "id": "string",
+            "name": "string",
+            "email": "string",
+            "role": "string"
+          }
+        }
+      }
+    },
+    "posts": {
+      "create_post": {
+        "method": "POST",
+        "url": "/api/posts/create",
+        "required_fields": ["user_id", "sport", "players_needed", "location"],
+        "body": {
+          "user_id": "string",
+          "sport": "string (e.g., Cricket, Football, Basketball)",
+          "players_needed": "number",
+          "location": {
+            "lat": "number (required)",
+            "lng": "number (required)",
+            "address": "string (optional)"
+          },
+          "description": "string (optional)",
+          "date": "string (optional, YYYY-MM-DD)",
+          "time": "string (optional, HH:MM)"
+        },
+        "note": "user_name is fetched automatically from user_id, DO NOT send it",
+        "response": {
+          "message": "Post created successfully",
+          "post": {
+            "id": "string",
+            "user_id": "string",
+            "user_name": "string (auto-filled)",
+            "sport": "string",
+            "players_needed": "number",
+            "accepted_players": ["array"],
+            "status": "open"
+          },
+          "group": {
+            "id": "string (format: group_{post_id})"
+          }
+        }
+      },
+      "get_post": {
+        "method": "GET",
+        "url": "/api/posts/{post_id}"
+      },
+      "search_nearby": {
+        "method": "POST",
+        "url": "/api/posts/nearby",
+        "required_fields": ["lat", "lng", "radius_km"],
+        "body": {
+          "lat": "number",
+          "lng": "number",
+          "radius_km": "number",
+          "sport": "string (optional filter)"
+        }
+      },
+      "search_nearby_with_turfs": {
+        "method": "POST",
+        "url": "/api/posts/nearby-with-turfs",
+        "note": "Accepts BOTH parameter names for compatibility",
+        "required_fields": ["lat OR user_lat", "lng OR user_lng", "radius_km"],
+        "body": {
+          "lat": "number (OR user_lat)",
+          "lng": "number (OR user_lng)",
+          "radius_km": "number",
+          "sport": "string (optional filter)"
+        }
+      },
+      "join_post": {
+        "method": "POST",
+        "url": "/api/posts/{post_id}/join",
+        "required_fields": ["user_id"],
+        "body": {
+          "user_id": "string"
+        },
+        "note": "Direct join - no approval needed. Player is added immediately to accepted_players"
+      },
+      "accept_request": {
+        "method": "POST",
+        "url": "/api/posts/{post_id}/accept",
+        "required_fields": ["owner_id", "player_id"],
+        "body": {
+          "owner_id": "string (post creator's user_id)",
+          "player_id": "string (user to accept)"
+        },
+        "note": "Used for approving pending requests (if any exist)"
+      },
+      "reject_request": {
+        "method": "POST",
+        "url": "/api/posts/{post_id}/reject (or /deny works too)",
+        "required_fields": ["owner_id", "player_id"],
+        "body": {
+          "owner_id": "string (post creator's user_id)",
+          "player_id": "string (user to reject/remove)"
+        },
+        "note": "Removes player from accepted players OR rejects pending request"
+      },
+      "kick_player": {
+        "method": "POST",
+        "url": "/api/posts/{post_id}/kick",
+        "required_fields": ["creator_id", "player_id"],
+        "body": {
+          "creator_id": "string (WARNING: uses creator_id, NOT owner_id!)",
+          "player_id": "string (user to kick)"
+        },
+        "note": "IMPORTANT: This endpoint uses creator_id, not owner_id"
+      },
+      "leave_post": {
+        "method": "POST",
+        "url": "/api/posts/{post_id}/leave",
+        "required_fields": ["user_id"],
+        "body": {
+          "user_id": "string"
+        }
+      },
+      "delete_post": {
+        "method": "DELETE",
+        "url": "/api/posts/{post_id} (or /api/posts/{post_id}/delete works too)",
+        "required_fields": ["user_id"],
+        "body": {
+          "user_id": "string (must be post creator)"
+        }
+      }
+    },
+    "groups": {
+      "get_group_details": {
+        "method": "GET",
+        "url": "/api/groups/{group_id}/details (or /api/group/{group_id} works too)"
+      },
+      "get_members": {
+        "method": "GET",
+        "url": "/api/groups/{group_id}/members",
+        "response": {
+          "total_members": "number",
+          "members": [
+            {
+              "user_id": "string",
+              "name": "string",
+              "phone": "string",
+              "role": "owner|member"
+            }
+          ]
+        }
+      },
+      "send_message": {
+        "method": "POST",
+        "url": "/api/groups/{group_id}/messages",
+        "required_fields": ["user_id", "message"],
+        "body": {
+          "user_id": "string",
+          "message": "string"
+        },
+        "note": "sender_name is fetched automatically from user_id, DO NOT send it",
+        "response": {
+          "message": "Message sent successfully",
+          "data": {
+            "sender_id": "string",
+            "sender_name": "string (auto-filled)",
+            "message": "string",
+            "timestamp": "string"
+          }
+        }
+      },
+      "get_messages": {
+        "method": "GET",
+        "url": "/api/groups/{group_id}/messages?limit=50",
+        "query_params": {
+          "limit": "number (optional, default 50)"
+        }
+      },
+      "get_user_groups": {
+        "method": "GET",
+        "url": "/api/users/{user_id}/groups"
+      }
+    },
+    "turfs": {
+      "create_turf": {
+        "method": "POST",
+        "url": "/api/turfs/create",
+        "required_fields": ["owner_id", "name", "location", "sports", "pricing", "timings"],
+        "body": {
+          "owner_id": "string (must be turf_owner role)",
+          "name": "string",
+          "location": {
+            "lat": "number (required)",
+            "lng": "number (required)",
+            "address": "string (optional)"
+          },
+          "sports": ["array of strings, e.g., ['Cricket', 'Football']"],
+          "facilities": ["array (optional), e.g., ['Parking', 'Changing Rooms']"],
+          "pricing": {
+            "per_hour": "number (required)",
+            "currency": "string (optional, default: INR)"
+          },
+          "timings": {
+            "opening": "string (required, format: HH:MM, e.g., '06:00')",
+            "closing": "string (required, format: HH:MM, e.g., '22:00')"
+          },
+          "images": ["array of URLs (optional)"]
+        },
+        "note": "Timings must use HH:MM format (24-hour)",
+        "response": {
+          "message": "Turf created successfully",
+          "turf": {
+            "id": "string"
+          }
+        }
+      },
+      "get_turf": {
+        "method": "GET",
+        "url": "/api/turfs/{turf_id}"
+      },
+      "update_turf": {
+        "method": "PUT",
+        "url": "/api/turfs/{turf_id}",
+        "required_fields": ["owner_id"],
+        "body": {
+          "owner_id": "string (for verification)",
+          "name": "string (optional)",
+          "pricing": "object (optional)",
+          "facilities": "array (optional)",
+          "any field": "any field can be updated"
+        }
+      },
+      "delete_turf": {
+        "method": "DELETE",
+        "url": "/api/turfs/{turf_id}",
+        "required_fields": ["owner_id"],
+        "body": {
+          "owner_id": "string (must be turf owner)"
+        }
+      },
+      "get_owner_turfs": {
+        "method": "GET",
+        "url": "/api/turf-owners/{owner_id}/turfs (or /api/turfs/owner/{owner_id} works too)"
+      },
+      "search_nearby": {
+        "method": "POST",
+        "url": "/api/turfs/search/nearby",
+        "required_fields": ["lat", "lng", "radius_km"],
+        "body": {
+          "lat": "number",
+          "lng": "number",
+          "radius_km": "number",
+          "sport": "string (optional filter)"
+        }
+      },
+      "get_availability": {
+        "method": "POST",
+        "url": "/api/turfs/{turf_id}/availability",
+        "required_fields": ["date"],
+        "body": {
+          "date": "string (YYYY-MM-DD)"
+        }
+      },
+      "book_slot": {
+        "method": "POST",
+        "url": "/api/turfs/{turf_id}/book",
+        "required_fields": ["user_id", "group_id", "date", "time_slot"],
+        "body": {
+          "user_id": "string",
+          "group_id": "string",
+          "date": "string (YYYY-MM-DD)",
+          "time_slot": "string (HH:MM-HH:MM, e.g., '10:00-12:00')"
+        }
+      }
+    },
+    "ratings": {
+      "rate_player": {
+        "method": "POST",
+        "url": "/api/ratings/add (or /api/ratings/rate-player works too)",
+        "required_fields": ["post_id", "rater_id", "rated_user_id", "overall_rating"],
+        "body": {
+          "post_id": "string",
+          "rater_id": "string",
+          "rated_user_id": "string",
+          "overall_rating": "number (1-5, required)",
+          "punctuality": "number (1-5, optional)",
+          "skill": "number (1-5, optional)",
+          "teamwork": "number (1-5, optional)",
+          "sportsmanship": "number (1-5, optional)",
+          "review": "string (optional comment)"
+        },
+        "note": "Optional ratings default to overall_rating if not provided. Field is 'review' not 'comment'",
+        "response": {
+          "message": "Rating submitted successfully",
+          "rating": {
+            "id": "string"
+          },
+          "user_average": {
+            "average_rating": "number",
+            "total_ratings": "number"
+          }
+        }
+      }
+    },
+    "user_profile": {
+      "get_profile": {
+        "method": "GET",
+        "url": "/api/users/{user_id}",
+        "response": {
+          "id": "string",
+          "name": "string",
+          "email": "string",
+          "phone": "string",
+          "role": "string",
+          "profile": "object (for players)",
+          "stats": "object (for players)",
+          "business": "object (for turf owners)"
+        }
+      },
+      "update_profile": {
+        "method": "PUT",
+        "url": "/api/users/{user_id}/profile",
+        "body": {
+          "bio": "string (optional)",
+          "skill_level": "string (optional)",
+          "age": "number (optional)",
+          "gender": "string (optional)"
+        }
+      },
+      "get_user_ratings": {
+        "method": "GET",
+        "url": "/api/users/{user_id}/ratings"
+      },
+      "get_user_posts": {
+        "method": "GET",
+        "url": "/api/users/{user_id}/posts"
+      }
+    },
+    "notifications": {
+      "get_notifications": {
+        "method": "GET",
+        "url": "/api/notifications/{user_id}"
+      },
+      "mark_all_read": {
+        "method": "PUT",
+        "url": "/api/notifications/{user_id}/read-all",
+        "note": "Accepts both PUT and POST methods"
+      }
+    },
+    "friends": {
+      "send_request": {
+        "method": "POST",
+        "url": "/api/friends/request",
+        "required_fields": ["sender_id", "receiver_id"],
+        "body": {
+          "sender_id": "string",
+          "receiver_id": "string"
+        }
+      },
+      "get_requests": {
+        "method": "GET",
+        "url": "/api/users/{user_id}/friend-requests"
+      },
+      "accept_request": {
+        "method": "POST",
+        "url": "/api/friends/accept",
+        "required_fields": ["request_id", "user_id"],
+        "body": {
+          "request_id": "string",
+          "user_id": "string"
+        }
+      },
+      "get_friends": {
+        "method": "GET",
+        "url": "/api/users/{user_id}/friends"
+      }
+    }
+  },
+  "field_validation_rules": {
+    "password": "Minimum 6 characters",
+    "email": "Must be unique across all users",
+    "rating_values": "Must be between 1 and 5",
+    "date_format": "YYYY-MM-DD (e.g., 2026-02-15)",
+    "time_format": "HH:MM 24-hour (e.g., 18:00)",
+    "time_slot_format": "HH:MM-HH:MM (e.g., 10:00-12:00)",
+    "location": "lat/lng must be decimal numbers"
+  },
+  "common_errors": {
+    "400": {
+      "causes": [
+        "Missing required field",
+        "Invalid parameter format",
+        "Rating value out of range (1-5)",
+        "Password too short (min 6 chars)"
+      ]
+    },
+    "403": {
+      "causes": [
+        "Only turf owners can create turfs",
+        "Only post creator can kick players",
+        "Only post owner can accept/reject requests"
+      ]
+    },
+    "404": {
+      "causes": [
+        "User not found",
+        "Post not found",
+        "group not found",
+        "Turf not found"
+      ]
+    }
+  },
+  "workflow_examples": {
+    "player_creates_game": {
+      "step1": "POST /api/users/register with role: 'player'",
+      "step2": "POST /api/users/login",
+      "step3": "POST /api/posts/create with user_id (not user_name)",
+      "step4": "Save post_id and group.id from response",
+      "step5": "Other players POST /api/posts/{post_id}/join",
+      "step6": "Use group_id for chat: POST /api/groups/{group_id}/messages"
+    },
+    "search_and_book_turf": {
+      "step1": "POST /api/turfs/search/nearby",
+      "step2": "GET /api/turfs/{turf_id}",
+      "step3": "POST /api/turfs/{turf_id}/availability",
+      "step4": "POST /api/turfs/{turf_id}/book"
+    }
+  }
+}
